@@ -1,0 +1,308 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core User Management
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  role        UserRole
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations based on role
+  patient     Patient?
+  doctor      Doctor?
+  admin       Admin?
+  
+  @@map("users")
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+// Patient Management
+model Patient {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Personal Information
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime
+  gender          Gender
+  phoneNumber     String
+  address         String
+  city            String
+  
+  // Medical Information
+  bloodType       BloodType?
+  allergies       String?
+  emergencyContact String
+  
+  // Relations
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+  prescriptions   Prescription[]
+  billings        Billing[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("patients")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BloodType {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+// Doctor Management
+model Doctor {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  firstName       String
+  lastName        String
+  specialization  String
+  licenseNumber   String    @unique
+  phoneNumber     String
+  experience      Int       // years of experience
+  consultationFee Decimal   @db.Decimal(8, 2)
+  
+  // Relations
+  department      Department @relation(fields: [departmentId], references: [id])
+  departmentId    String
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+  prescriptions   Prescription[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("doctors")
+}
+
+// Department Management
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  location    String
+  phoneNumber String
+  
+  // Relations
+  doctors     Doctor[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("departments")
+}
+
+// Admin Management
+model Admin {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  firstName   String
+  lastName    String
+  phoneNumber String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("admins")
+}
+
+// Appointment Management
+model Appointment {
+  id              String            @id @default(cuid())
+  appointmentDate DateTime
+  appointmentTime String            // "10:30 AM"
+  duration        Int               @default(30) // in minutes
+  status          AppointmentStatus @default(SCHEDULED)
+  reason          String
+  notes           String?
+  
+  // Relations
+  patient         Patient           @relation(fields: [patientId], references: [id])
+  patientId       String
+  doctor          Doctor            @relation(fields: [doctorId], references: [id])
+  doctorId        String
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@map("appointments")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// Medical Records
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  visitDate   DateTime @default(now())
+  symptoms    String
+  diagnosis   String
+  treatment   String
+  notes       String?
+  
+  // Basic vitals as separate fields (simpler than JSON)
+  bloodPressure String? // "120/80"
+  temperature   String? // "98.6°F"
+  pulse         String? // "72 BPM"
+  weight        String? // "70 kg"
+  
+  // Relations
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  patientId   String
+  doctor      Doctor   @relation(fields: [doctorId], references: [id])
+  doctorId    String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("medical_records")
+}
+
+// Prescription Management
+model Prescription {
+  id               String               @id @default(cuid())
+  prescriptionDate DateTime             @default(now())
+  instructions     String
+  status           PrescriptionStatus   @default(ACTIVE)
+  
+  // Relations
+  patient          Patient              @relation(fields: [patientId], references: [id])
+  patientId        String
+  doctor           Doctor               @relation(fields: [doctorId], references: [id])
+  doctorId         String
+  medications      PrescriptionMedication[]
+  
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  
+  @@map("prescriptions")
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Medication Management (Simplified)
+model Medication {
+  id              String      @id @default(cuid())
+  name            String      @unique
+  genericName     String?
+  dosageForm      String      // tablet, capsule, syrup
+  strength        String      // 500mg, 10ml
+  price           Decimal     @db.Decimal(8, 2)
+  
+  // Relations
+  prescriptions   PrescriptionMedication[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@map("medications")
+}
+
+// Junction table for Prescription and Medication (Many-to-Many)
+model PrescriptionMedication {
+  id             String       @id @default(cuid())
+  quantity       Int
+  dosage         String       // "1 tablet twice daily"
+  duration       String       // "7 days"
+  
+  // Relations
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  prescriptionId String
+  medication     Medication   @relation(fields: [medicationId], references: [id])
+  medicationId   String
+  
+  @@unique([prescriptionId, medicationId])
+  @@map("prescription_medications")
+}
+
+// Billing Management (Simplified)
+model Billing {
+  id              String        @id @default(cuid())
+  billDate        DateTime      @default(now())
+  totalAmount     Decimal       @db.Decimal(8, 2)
+  paidAmount      Decimal       @default(0) @db.Decimal(8, 2)
+  status          BillingStatus @default(PENDING)
+  paymentMethod   PaymentMethod?
+  
+  // Relations
+  patient         Patient       @relation(fields: [patientId], references: [id])
+  patientId       String
+  billingItems    BillingItem[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@map("billings")
+}
+
+enum BillingStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  UPI
+  NET_BANKING
+}
+
+// Billing Items
+model BillingItem {
+  id          String   @id @default(cuid())
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(8, 2)
+  totalPrice  Decimal  @db.Decimal(8, 2)
+  
+  // Relations
+  billing     Billing  @relation(fields: [billingId], references: [id], onDelete: Cascade)
+  billingId   String
+  
+  @@map("billing_items")
+}
