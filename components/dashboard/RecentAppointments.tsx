@@ -199,7 +199,7 @@ export const RecentAppointments = ({
                 : 'No recent appointments to display.'
               }
             </p>
-            <Link href="/appointments/new">
+            <Link href="/appointments">
               <Button size="sm">
                 {userRole === 'PATIENT' ? 'Book Appointment' : 'Schedule Appointment'}
               </Button>

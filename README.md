@@ -46,3 +46,16 @@ I implemented a **secure authentication system** for the project:
   - `stats/route.ts` → Provides dashboard statistics and metrics  
   - `departments/route.ts` → Manages department-related data  
 - Added **error handling** and **server-side data processing** for reliable dashboard updates.  
+
+## 📅 Appointment System – Week 4  
+
+- Added **patient booking page** using `AppointmentBookingForm.tsx`.  
+- Implemented **doctor availability API** at `doctors/[doctorId]/availability/route.ts`.  
+- Created **appointments API** (`api/appointments/route.ts`) for CRUD operations.  
+- Patients can **book, reschedule, and cancel** appointments.  
+- Doctors can **set available slots** and manage bookings.  
+- Appointment model updated with **status enum** (`PENDING`, `CONFIRMED`, `CANCELLED`).  
+- Built **appointments dashboard page** in `app/(dashboard)/appointments/page.tsx`.  
+- Ensured **role-based access** (Patient, Doctor, Admin).  
+- Added validation to prevent **double-booking**.  
+- UI styled with **TailwindCSS** for responsive design.  
